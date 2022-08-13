@@ -6,4 +6,5 @@ pub mod linter;
 pub mod logging;
 pub mod message;
 mod parser;
+pub mod test_runner;
 mod visitor;
