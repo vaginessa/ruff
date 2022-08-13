@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 use walkdir::{DirEntry, WalkDir};
@@ -18,4 +20,20 @@ pub fn collect_python_files(path: &PathBuf) -> Vec<DirEntry> {
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.path().to_string_lossy().ends_with(".py"))
         .collect()
+}
+
+pub fn readlines(filename: &str, row: &usize) -> String {
+    let file = File::open(filename).unwrap();
+    let reader = BufReader::new(file);
+    let mut lines: Vec<String> = vec!["\n...".to_string()];
+    lines.extend(
+        reader
+            .lines()
+            .skip(*row - 1)
+            .take(5)
+            .map(|item| item.unwrap())
+            .collect::<Vec<String>>(),
+    );
+    lines.push("...\n".to_string());
+    lines.join("\n")
 }

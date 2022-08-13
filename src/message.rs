@@ -1,3 +1,4 @@
+use bat::PrettyPrinter;
 use std::fmt;
 
 use colored::Colorize;
@@ -5,6 +6,7 @@ use rustpython_parser::ast::Location;
 use serde::{Deserialize, Serialize};
 
 use crate::check::CheckKind;
+use crate::fs::readlines;
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Location")]
@@ -31,16 +33,23 @@ pub struct Message {
 
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let contents = readlines(&self.filename, &self.location.row());
+        PrettyPrinter::new()
+            .input_from_bytes(contents.as_ref())
+            .language("python")
+            .print()
+            .unwrap();
         write!(
             f,
-            "{}{}{}{}{}\t{}\t{}",
+            "{}{}{}{}{}{} {} {}",
             self.filename.white().bold(),
             ":".cyan(),
             self.location.column(),
             ":".cyan(),
             self.location.row(),
+            ":".cyan(),
             self.kind.code().red().bold(),
-            self.kind.body()
+            self.kind.body(),
         )
     }
 }
