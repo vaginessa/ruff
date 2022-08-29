@@ -12,50 +12,50 @@ use crate::settings::Settings;
 use crate::{cache, fs};
 
 pub fn check_path(path: &Path, settings: &Settings, mode: &cache::Mode) -> Result<Vec<Message>> {
-    // Check the cache.
-    if let Some(messages) = cache::get(path, settings, mode) {
-        debug!("Cache hit for: {}", path.to_string_lossy());
-        return Ok(messages);
-    }
+    // // Check the cache.
+    // if let Some(messages) = cache::get(path, settings, mode) {
+    //     debug!("Cache hit for: {}", path.to_string_lossy());
+    //     return Ok(messages);
+    // }
 
     // Read the file from disk.
     let contents = fs::read_file(path)?;
 
     // Aggregate all checks.
-    let mut checks: Vec<Check> = vec![];
+    // let mut checks: Vec<Check> = vec![];
 
-    // Run the AST-based checks.
-    if settings
-        .select
-        .iter()
-        .any(|check_code| matches!(check_code.lint_source(), LintSource::AST))
-    {
-        let python_ast = parser::parse_program(&contents, &path.to_string_lossy())?;
-        checks.extend(check_ast(&python_ast, settings));
-    }
+    let python_ast = parser::parse_program(&contents, &path.to_string_lossy())?;
+    // // Run the AST-based checks.
+    // if settings
+    //     .select
+    //     .iter()
+    //     .any(|check_code| matches!(check_code.lint_source(), LintSource::AST))
+    // {
+    //     checks.extend(check_ast(&python_ast, settings));
+    // }
+    //
+    // // Run the lines-based checks.
+    // if settings
+    //     .select
+    //     .iter()
+    //     .any(|check_code| matches!(check_code.lint_source(), LintSource::Lines))
+    // {
+    //     checks.extend(check_lines(&contents, settings));
+    // }
+    //
+    // // Convert to messages.
+    // let messages: Vec<Message> = checks
+    //     .into_iter()
+    //     .map(|check| Message {
+    //         kind: check.kind,
+    //         location: check.location,
+    //         filename: path.to_string_lossy().to_string(),
+    //     })
+    //     .filter(|message| !message.is_inline_ignored())
+    //     .collect();
+    // cache::set(path, settings, &messages, mode);
 
-    // Run the lines-based checks.
-    if settings
-        .select
-        .iter()
-        .any(|check_code| matches!(check_code.lint_source(), LintSource::Lines))
-    {
-        checks.extend(check_lines(&contents, settings));
-    }
-
-    // Convert to messages.
-    let messages: Vec<Message> = checks
-        .into_iter()
-        .map(|check| Message {
-            kind: check.kind,
-            location: check.location,
-            filename: path.to_string_lossy().to_string(),
-        })
-        .filter(|message| !message.is_inline_ignored())
-        .collect();
-    cache::set(path, settings, &messages, mode);
-
-    Ok(messages)
+    Ok(vec![])
 }
 
 #[cfg(test)]
