@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::collections::BTreeMap;
 
 use bat::PrettyPrinter;
@@ -18,6 +18,7 @@ use libcst_native::{
     StarredDictElement, StarredElement, Statement, Subscript, SubscriptElement, Try, TryStar,
     Tuple, UnaryOp, UnaryOperation, While, With, WithItem, Yield, YieldValue,
 };
+use quote::quote;
 use rustpython_parser::ast::Location;
 
 use crate::checks::{Check, CheckKind};
@@ -72,7 +73,7 @@ impl Checker<'_> {
 }
 
 impl CSTVisitor for Checker<'_> {
-    fn visit_If(&mut self, node: &If) {
+    fn visit_If(&mut self, node: If) {
         if let Expression::Tuple { .. } = node.test {
             self.checks.push(Check {
                 kind: CheckKind::IfTuple,
@@ -82,21 +83,19 @@ impl CSTVisitor for Checker<'_> {
         cst_visitor::walk_If(self, node);
     }
 
-    fn visit_Expression<'a, 'b>(&'b mut self, node: &'a Expression<'a>) -> Expression<'a>
-    where
-        'b: 'a,
+    // Maybe try to pass like this?
+    fn visit_Expression<'a>(&mut self, node: Expression<'a>) -> Expression<'a>
     {
-        match node {
+        match &node {
             Expression::FormattedString(node) => match &node.parts[..] {
                 [node] => match node {
                     FormattedStringContent::Text(node) => {
-                        let x = node.value.to_string();
-                        println!("Found: {:?}", node);
+                        let x = node.value;
                         return Expression::SimpleString(Box::new(SimpleString {
-                            value: self.bump.alloc(format!("\"{}\"", x)),
+                            value: format!("\"{}\"", node.value).as_str(),
                             lpar: vec![],
                             rpar: vec![],
-                        }));
+                        }.clone()));
                     }
                     _ => {}
                 },
@@ -108,7 +107,7 @@ impl CSTVisitor for Checker<'_> {
         cst_visitor::walk_Expression(self, node)
     }
 
-    fn visit_ClassDef<'a>(&mut self, node: &'a ClassDef<'a>) -> ClassDef<'a> {
+    fn visit_ClassDef<'a>(&mut self, node: ClassDef<'a>) -> ClassDef<'a> {
         let mut bases: Vec<Arg<'a>> = node
             .bases
             .clone()
@@ -135,7 +134,7 @@ impl CSTVisitor for Checker<'_> {
     }
 }
 
-pub fn check_cst<'a>(python_cst: &'a Module<'a>, settings: &Settings) -> Vec<Check> {
+pub fn check_cst<'a>(python_cst: Module<'a>, settings: &Settings) -> Vec<Check> {
     // // Create a new arena to bump allocate into.
     // let bump = Bump::new();
     //

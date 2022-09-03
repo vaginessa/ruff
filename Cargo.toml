@@ -32,6 +32,7 @@ toml = { version = "0.5.9" }
 walkdir = { version = "2.3.2" }
 bumpalo = "3.11.0"
 bat = "0.21.0"
+quote = "1.0.21"
 
 [profile.release]
 panic = "abort"

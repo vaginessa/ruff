@@ -27,7 +27,7 @@ pub fn check_path(path: &Path, settings: &Settings, mode: &cache::Mode) -> Resul
         Ok(m) => m,
         Err(e) => panic!("Failed to parse CST."),
     };
-    checks.extend(check_cst(&python_cst, settings));
+    checks.extend(check_cst(python_cst, settings));
 
     // // Run the AST-based checks.
     // if settings
