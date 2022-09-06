@@ -12,6 +12,7 @@ use crate::ast_ops::{
     extract_all_names, Binding, BindingKind, Scope, ScopeKind, SourceCodeLocator,
 };
 use crate::builtins::{BUILTINS, MAGIC_GLOBALS};
+use crate::checkers::{AssertTupleChecker, IfTupleChecker};
 use crate::checks::{Check, CheckCode, CheckKind, Fix, RejectedCmpop};
 use crate::settings::Settings;
 use crate::visitor::{walk_excepthandler, SingleNodeVisitor, Visitor};
@@ -22,7 +23,7 @@ struct Checker<'a> {
     settings: &'a Settings,
     autofix: &'a autofix::Mode,
     path: &'a str,
-    checkers: Vec<&'a dyn SingleNodeVisitor>,
+    checkers: Vec<&'a mut dyn SingleNodeVisitor>,
     checks: Vec<Check>,
     scopes: Vec<Scope>,
     dead_scopes: Vec<Scope>,
@@ -36,6 +37,7 @@ struct Checker<'a> {
 impl Checker<'_> {
     pub fn new<'a>(
         settings: &'a Settings,
+        checkers: Vec<&'a mut dyn SingleNodeVisitor>,
         autofix: &'a autofix::Mode,
         path: &'a str,
         content: &'a str,
@@ -45,7 +47,7 @@ impl Checker<'_> {
             autofix,
             path,
             locator: SourceCodeLocator::new(content),
-            checkers: vec![],
+            checkers,
             checks: vec![],
             scopes: vec![],
             dead_scopes: vec![],
@@ -60,6 +62,10 @@ impl Checker<'_> {
 
 impl Visitor for Checker<'_> {
     fn visit_stmt(&mut self, stmt: &Stmt) {
+        for checker in &mut self.checkers {
+            checker.visit_stmt(&stmt)
+        }
+
         match &stmt.node {
             StmtKind::Global { names } | StmtKind::Nonlocal { names } => {
                 // TODO(charlie): Handle doctests.
@@ -294,16 +300,6 @@ impl Visitor for Checker<'_> {
                     }
                 }
             }
-            StmtKind::If { test, .. } => {
-                if self.settings.select.contains(CheckKind::IfTuple.code()) {
-                    if let ExprKind::Tuple { elts, .. } = &test.node {
-                        if !elts.is_empty() {
-                            self.checks
-                                .push(Check::new(CheckKind::IfTuple, stmt.location));
-                        }
-                    }
-                }
-            }
             StmtKind::Raise { exc, .. } => {
                 if self
                     .settings
@@ -341,14 +337,6 @@ impl Visitor for Checker<'_> {
             }
             StmtKind::Assert { test, .. } => {
                 self.seen_non_import = true;
-                if self.settings.select.contains(CheckKind::AssertTuple.code()) {
-                    if let ExprKind::Tuple { elts, .. } = &test.node {
-                        if !elts.is_empty() {
-                            self.checks
-                                .push(Check::new(CheckKind::AssertTuple, stmt.location));
-                        }
-                    }
-                }
             }
             StmtKind::Try { handlers, .. } => {
                 if self
@@ -445,6 +433,10 @@ impl Visitor for Checker<'_> {
         }
     }
     fn visit_annotation(&mut self, expr: &Expr) {
+        for checker in &mut self.checkers {
+            checker.visit_annotation(&expr)
+        }
+
         let initial = self.in_annotation;
         self.in_annotation = true;
         self.visit_expr(expr, None);
@@ -452,6 +444,10 @@ impl Visitor for Checker<'_> {
     }
 
     fn visit_expr(&mut self, expr: &Expr, parent: Option<&Stmt>) {
+        for checker in &mut self.checkers {
+            checker.visit_expr(&expr, parent)
+        }
+
         let initial = self.in_f_string;
         match &expr.node {
             ExprKind::Name { ctx, .. } => match ctx {
@@ -673,6 +669,10 @@ impl Visitor for Checker<'_> {
     }
 
     fn visit_excepthandler(&mut self, excepthandler: &Excepthandler) {
+        for checker in &mut self.checkers {
+            checker.visit_excepthandler(&excepthandler)
+        }
+
         match &excepthandler.node {
             ExcepthandlerKind::ExceptHandler { name, .. } => match name {
                 Some(name) => {
@@ -726,6 +726,10 @@ impl Visitor for Checker<'_> {
     }
 
     fn visit_arguments(&mut self, arguments: &Arguments) {
+        for checker in &mut self.checkers {
+            checker.visit_arguments(&arguments)
+        }
+
         if self
             .settings
             .select
@@ -762,6 +766,10 @@ impl Visitor for Checker<'_> {
     }
 
     fn visit_arg(&mut self, arg: &Arg) {
+        for checker in &mut self.checkers {
+            checker.visit_arg(&arg)
+        }
+
         self.add_binding(
             arg.node.arg.to_string(),
             Binding {
@@ -1001,7 +1009,10 @@ pub fn check_ast(
     autofix: &autofix::Mode,
     path: &str,
 ) -> Vec<Check> {
-    let mut checker = Checker::new(settings, autofix, path, content);
+    let mut check1 = IfTupleChecker::new();
+    let mut check2 = AssertTupleChecker::new();
+    let checkers: Vec<&mut dyn SingleNodeVisitor> = vec![&mut check1, &mut check2];
+    let mut checker = Checker::new(settings, checkers, autofix, path, content);
     checker.push_scope(Scope::new(ScopeKind::Module));
     checker.bind_builtins();
 
