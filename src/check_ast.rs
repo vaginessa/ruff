@@ -14,7 +14,7 @@ use crate::ast_ops::{
 use crate::builtins::{BUILTINS, MAGIC_GLOBALS};
 use crate::checks::{Check, CheckCode, CheckKind, Fix, RejectedCmpop};
 use crate::settings::Settings;
-use crate::visitor::{walk_excepthandler, Visitor};
+use crate::visitor::{walk_excepthandler, SingleNodeVisitor, Visitor};
 use crate::{autofix, fixer, visitor};
 
 struct Checker<'a> {
@@ -22,6 +22,7 @@ struct Checker<'a> {
     settings: &'a Settings,
     autofix: &'a autofix::Mode,
     path: &'a str,
+    checkers: Vec<&'a dyn SingleNodeVisitor>,
     checks: Vec<Check>,
     scopes: Vec<Scope>,
     dead_scopes: Vec<Scope>,
@@ -44,6 +45,7 @@ impl Checker<'_> {
             autofix,
             path,
             locator: SourceCodeLocator::new(content),
+            checkers: vec![],
             checks: vec![],
             scopes: vec![],
             dead_scopes: vec![],

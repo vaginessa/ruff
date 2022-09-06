@@ -4,6 +4,27 @@ use rustpython_parser::ast::{
     PatternKind, Stmt, StmtKind, Unaryop, Withitem,
 };
 
+pub trait SingleNodeVisitor {
+    fn visit_stmt(&mut self, _stmt: &Stmt) {}
+    fn visit_annotation(&mut self, _expr: &Expr) {}
+    fn visit_expr(&mut self, _expr: &Expr, _parent: Option<&Stmt>) {}
+    fn visit_constant(&mut self, _constant: &Constant) {}
+    fn visit_expr_context(&mut self, _expr_content: &ExprContext) {}
+    fn visit_boolop(&mut self, _boolop: &Boolop) {}
+    fn visit_operator(&mut self, _operator: &Operator) {}
+    fn visit_unaryop(&mut self, _unaryop: &Unaryop) {}
+    fn visit_cmpop(&mut self, _cmpop: &Cmpop) {}
+    fn visit_comprehension(&mut self, _comprehension: &Comprehension) {}
+    fn visit_excepthandler(&mut self, _excepthandler: &Excepthandler) {}
+    fn visit_arguments(&mut self, _arguments: &Arguments) {}
+    fn visit_arg(&mut self, _arg: &Arg) {}
+    fn visit_keyword(&mut self, _keyword: &Keyword) {}
+    fn visit_alias(&mut self, _alias: &Alias) {}
+    fn visit_withitem(&mut self, _withitem: &Withitem) {}
+    fn visit_match_case(&mut self, _match_case: &MatchCase) {}
+    fn visit_pattern(&mut self, _pattern: &Pattern) {}
+}
+
 pub trait Visitor {
     fn visit_stmt(&mut self, stmt: &Stmt) {
         walk_stmt(self, stmt);
