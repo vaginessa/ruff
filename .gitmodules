@@ -1,0 +1,4 @@
+[submodule "vendor/RustPython"]
+	path = vendor/RustPython
+	url = git@github.com:charliermarsh/RustPython.git
+	branch = charlie/ruff
