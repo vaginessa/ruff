@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use rustpython_ast::{Expr, ExprKind};
+use rustpython_ast::{Constant, Expr, ExprKind, Operator};
 
 use crate::ast::helpers::match_name_or_attr;
 use crate::ast::types::Range;
@@ -13,10 +13,22 @@ pub fn use_pep604_annotation(checker: &mut Checker, expr: &Expr, value: &Expr, s
         let mut check = Check::new(CheckKind::UsePEP604Annotation, Range::from_located(expr));
         if matches!(checker.autofix, fixer::Mode::Generate | fixer::Mode::Apply) {
             let mut generator = SourceGenerator::new();
-            if let Ok(()) = generator.unparse_expr(slice, 0) {
+            if let Ok(()) = generator.unparse_binop(
+                slice,
+                &Operator::BitOr,
+                &Expr::new(
+                    Default::default(),
+                    Default::default(),
+                    ExprKind::Constant {
+                        value: Constant::None,
+                        kind: None,
+                    },
+                ),
+                0,
+            ) {
                 if let Ok(content) = generator.generate() {
                     check.amend(Fix {
-                        content: format!("{} | None", content),
+                        content,
                         location: expr.location,
                         end_location: expr.end_location,
                         applied: false,

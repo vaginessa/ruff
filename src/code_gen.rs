@@ -1036,4 +1036,61 @@ impl SourceGenerator {
         }
         Ok(())
     }
+
+    /// Targeted helpers.
+    pub fn unparse_binop<U>(
+        &mut self,
+        left: &Expr<U>,
+        op: &Operator,
+        right: &Expr<U>,
+        level: u8,
+    ) -> fmt::Result {
+        macro_rules! opprec {
+            ($opty:ident, $x:expr, $enu:path, $($var:ident($op:literal, $prec:ident)),*$(,)?) => {
+                match $x {
+                    $(<$enu>::$var => (opprec!(@space $opty, $op), precedence::$prec),)*
+                }
+            };
+            (@space bin, $op:literal) => {
+                concat!(" ", $op, " ")
+            };
+            (@space un, $op:literal) => {
+                $op
+            };
+        }
+        macro_rules! group_if {
+            ($lvl:expr, $body:block) => {{
+                let group = level > $lvl;
+                self.p_if(group, "(")?;
+                let ret = $body;
+                self.p_if(group, ")")?;
+                ret
+            }};
+        }
+        let rassoc = matches!(op, Operator::Pow);
+        let (op, prec) = opprec!(
+            bin,
+            op,
+            Operator,
+            Add("+", ARITH),
+            Sub("-", ARITH),
+            Mult("*", TERM),
+            MatMult("@", TERM),
+            Div("/", TERM),
+            Mod("%", TERM),
+            Pow("**", POWER),
+            LShift("<<", SHIFT),
+            RShift(">>", SHIFT),
+            BitOr("|", BOR),
+            BitXor("^", BXOR),
+            BitAnd("&", BAND),
+            FloorDiv("//", TERM),
+        );
+        group_if!(prec, {
+            self.unparse_expr(left, prec + rassoc as u8)?;
+            self.p(op)?;
+            self.unparse_expr(right, prec + !rassoc as u8)?;
+        });
+        Ok(())
+    }
 }
