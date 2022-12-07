@@ -15,7 +15,8 @@ use crate::autofix::fixer;
 use crate::autofix::fixer::fix_file;
 use crate::check_ast::check_ast;
 use crate::check_imports::check_imports;
-use crate::check_lines::check_lines;
+use crate::check_logical_lines::check_logical_lines;
+use crate::check_physical_lines::check_lines;
 use crate::check_tokens::check_tokens;
 use crate::checks::{Check, CheckCode, CheckKind, LintSource};
 use crate::code_gen::SourceGenerator;
@@ -69,6 +70,8 @@ pub(crate) fn check_path(
     if use_tokens {
         checks.extend(check_tokens(locator, &tokens, settings, autofix));
     }
+
+    check_logical_lines(&tokens, locator);
 
     // Run the AST-based checks.
     let use_ast = settings
